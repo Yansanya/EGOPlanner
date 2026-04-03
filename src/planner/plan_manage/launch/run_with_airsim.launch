@@ -1,0 +1,94 @@
+<launch>
+  <!-- ============================================================ -->
+  <!--  EGO-Planner + AirSim Integration Launch File                -->
+  <!--  Replaces simulator.xml with AirSim as the simulation backend -->
+  <!--                                                               -->
+  <!--  Prerequisites:                                               -->
+  <!--    1. AirSim simulator running (Unreal Engine)                -->
+  <!--    2. airsim_ros_pkgs node launched with ENU mode:            -->
+  <!--       roslaunch airsim_ros_pkgs airsim_node.launch            -->
+  <!--         world_frame_id:=world_enu                             -->
+  <!--    3. ego_to_airsim_bridge.py running for control commands    -->
+  <!-- ============================================================ -->
+
+  <!-- Map size (meters) -->
+  <arg name="map_size_x" value="40.0"/>
+  <arg name="map_size_y" value="40.0"/>
+  <arg name="map_size_z" value="5.0"/>
+
+  <!-- AirSim vehicle name (must match settings.json) -->
+  <arg name="vehicle_name" default="Drone1"/>
+
+  <!-- AirSim ROS topics (ENU mode) -->
+  <arg name="odom_topic" value="/airsim_node/$(arg vehicle_name)/odom_local_enu"/>
+  <arg name="depth_topic" value="/airsim_node/$(arg vehicle_name)/front_center/DepthPlanar"/>
+  <arg name="cloud_topic" value="/airsim_node/$(arg vehicle_name)/lidar/Lidar1"/>
+
+  <!-- EGO-Planner core (advanced_param.xml) -->
+  <include file="$(find ego_planner)/launch/advanced_param.xml">
+    <arg name="map_size_x_" value="$(arg map_size_x)"/>
+    <arg name="map_size_y_" value="$(arg map_size_y)"/>
+    <arg name="map_size_z_" value="$(arg map_size_z)"/>
+
+    <arg name="odometry_topic" value="$(arg odom_topic)"/>
+
+    <!-- Depth camera mode: pose_type=2 uses odom+depth sync,
+         camera_pose_topic is unused but must be a valid string -->
+    <arg name="camera_pose_topic" value="$(arg odom_topic)"/>
+    <arg name="depth_topic" value="$(arg depth_topic)"/>
+    <arg name="cloud_topic" value="$(arg cloud_topic)"/>
+
+    <!-- Camera intrinsics for AirSim: 640x480, FOV 90 degrees
+         fx = fy = width / (2 * tan(FOV/2)) = 640 / (2 * tan(45)) = 320 -->
+    <arg name="cx" value="320.0"/>
+    <arg name="cy" value="240.0"/>
+    <arg name="fx" value="320.0"/>
+    <arg name="fy" value="320.0"/>
+
+    <arg name="max_vel" value="2.0"/>
+    <arg name="max_acc" value="3.0"/>
+
+    <!-- Planning horizon should be ~1.5x sensing horizon (depth_filter_maxdist=5.0) -->
+    <arg name="planning_horizon" value="7.5"/>
+
+    <!-- flight_type: 1 = use RViz 2D Nav Goal, 2 = follow preset waypoints -->
+    <arg name="flight_type" value="1"/>
+
+    <!-- Preset waypoints (only used when flight_type=2) -->
+    <arg name="point_num" value="1"/>
+    <arg name="point0_x" value="10.0"/>
+    <arg name="point0_y" value="0.0"/>
+    <arg name="point0_z" value="1.5"/>
+    <arg name="point1_x" value="0.0"/>
+    <arg name="point1_y" value="0.0"/>
+    <arg name="point1_z" value="1.5"/>
+    <arg name="point2_x" value="0.0"/>
+    <arg name="point2_y" value="0.0"/>
+    <arg name="point2_z" value="1.5"/>
+    <arg name="point3_x" value="0.0"/>
+    <arg name="point3_y" value="0.0"/>
+    <arg name="point3_z" value="1.5"/>
+    <arg name="point4_x" value="0.0"/>
+    <arg name="point4_y" value="0.0"/>
+    <arg name="point4_z" value="1.5"/>
+  </include>
+
+  <!-- Trajectory server: converts B-spline to PositionCommand at 100Hz -->
+  <node pkg="ego_planner" name="traj_server" type="traj_server" output="screen">
+    <remap from="/position_cmd" to="/planning/pos_cmd"/>
+    <remap from="/odom_world" to="$(arg odom_topic)"/>
+    <param name="traj_server/time_forward" value="1.0" type="double"/>
+  </node>
+
+  <!-- Waypoint generator: converts RViz 2D Nav Goal to waypoints -->
+  <node pkg="waypoint_generator" name="waypoint_generator" type="waypoint_generator" output="screen">
+    <remap from="~odom" to="$(arg odom_topic)"/>
+    <remap from="~goal" to="/move_base_simple/goal"/>
+    <remap from="~traj_start_trigger" to="/traj_start_trigger"/>
+    <param name="waypoint_type" value="manual-lonely-waypoint"/>
+  </node>
+
+  <!-- RViz visualization -->
+  <include file="$(find ego_planner)/launch/rviz.launch"/>
+
+</launch>
