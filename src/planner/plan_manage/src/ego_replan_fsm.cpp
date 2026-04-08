@@ -116,7 +116,8 @@ namespace ego_planner
     init_pt_ = odom_pos_;
 
     bool success = false;
-    end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, 1.0;
+    double target_z = msg->poses[0].pose.position.z > 0.1 ? msg->poses[0].pose.position.z : odom_pos_(2);
+    end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, target_z;
     success = planner_manager_->planGlobalTraj(odom_pos_, odom_vel_, Eigen::Vector3d::Zero(), end_pt_, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
 
     visualization_->displayGoalPoint(end_pt_, Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, 0);
@@ -259,7 +260,6 @@ namespace ego_planner
       bool success = callReboundReplan(true, flag_random_poly_init);
       if (success)
       {
-
         changeFSMExecState(EXEC_TRAJ, "FSM");
         flag_escape_emergency_ = true;
       }

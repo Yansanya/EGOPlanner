@@ -69,6 +69,8 @@ add_dependencies(traj_server ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 catkin_install_python(PROGRAMS
   scripts/ego_to_airsim_bridge.py
+  scripts/lidar_to_world.py
+  scripts/traj_visualizer.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

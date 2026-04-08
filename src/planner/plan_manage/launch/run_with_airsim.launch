@@ -12,9 +12,9 @@
   <!-- ============================================================ -->
 
   <!-- Map size (meters) -->
-  <arg name="map_size_x" value="40.0"/>
-  <arg name="map_size_y" value="40.0"/>
-  <arg name="map_size_z" value="5.0"/>
+  <arg name="map_size_x" value="200.0"/>
+  <arg name="map_size_y" value="200.0"/>
+  <arg name="map_size_z" value="10.0"/>
 
   <!-- AirSim vehicle name (must match settings.json) -->
   <arg name="vehicle_name" default="Drone1"/>
@@ -22,7 +22,8 @@
   <!-- AirSim ROS topics (ENU mode) -->
   <arg name="odom_topic" value="/airsim_node/$(arg vehicle_name)/odom_local_enu"/>
   <arg name="depth_topic" value="/airsim_node/$(arg vehicle_name)/front_center/DepthPlanar"/>
-  <arg name="cloud_topic" value="/airsim_node/$(arg vehicle_name)/lidar/Lidar1"/>
+  <!-- Use world-frame transformed LiDAR (from lidar_to_world node) -->
+  <arg name="cloud_topic" value="/lidar_world"/>
 
   <!-- EGO-Planner core (advanced_param.xml) -->
   <include file="$(find ego_planner)/launch/advanced_param.xml">
@@ -52,19 +53,19 @@
     <arg name="planning_horizon" value="7.5"/>
 
     <!-- flight_type: 1 = use RViz 2D Nav Goal, 2 = follow preset waypoints -->
-    <arg name="flight_type" value="1"/>
+    <arg name="flight_type" value="2"/>
 
     <!-- Preset waypoints (only used when flight_type=2) -->
-    <arg name="point_num" value="1"/>
+    <arg name="point_num" value="3"/>
     <arg name="point0_x" value="10.0"/>
-    <arg name="point0_y" value="0.0"/>
-    <arg name="point0_z" value="1.5"/>
-    <arg name="point1_x" value="0.0"/>
-    <arg name="point1_y" value="0.0"/>
-    <arg name="point1_z" value="1.5"/>
-    <arg name="point2_x" value="0.0"/>
+    <arg name="point0_y" value="5.0"/>
+    <arg name="point0_z" value="3.0"/>
+    <arg name="point1_x" value="20.0"/>
+    <arg name="point1_y" value="-5.0"/>
+    <arg name="point1_z" value="3.0"/>
+    <arg name="point2_x" value="30.0"/>
     <arg name="point2_y" value="0.0"/>
-    <arg name="point2_z" value="1.5"/>
+    <arg name="point2_z" value="3.0"/>
     <arg name="point3_x" value="0.0"/>
     <arg name="point3_y" value="0.0"/>
     <arg name="point3_z" value="1.5"/>
@@ -86,6 +87,24 @@
     <remap from="~goal" to="/move_base_simple/goal"/>
     <remap from="~traj_start_trigger" to="/traj_start_trigger"/>
     <param name="waypoint_type" value="manual-lonely-waypoint"/>
+  </node>
+
+  <!-- Bridge TF: AirSim uses "world_enu", EGO-Planner uses "world" -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="world_to_enu_tf"
+        args="0 0 0 0 0 0 world world_enu"/>
+
+  <!-- Transform LiDAR from sensor local frame to world frame (using odom, no TF) -->
+  <node pkg="ego_planner" name="lidar_to_world" type="lidar_to_world.py" output="screen">
+    <param name="input_topic" value="/airsim_node/$(arg vehicle_name)/lidar/Lidar1"/>
+    <param name="odom_topic" value="$(arg odom_topic)"/>
+    <param name="target_frame" value="world"/>
+  </node>
+
+  <!-- Trajectory visualization: publishes flight path + drone marker for RViz -->
+  <node pkg="ego_planner" name="traj_visualizer" type="traj_visualizer.py" output="screen">
+    <param name="odom_topic" value="$(arg odom_topic)"/>
+    <param name="world_frame" value="world"/>
+    <param name="min_distance" value="0.05"/>
   </node>
 
   <!-- RViz visualization -->
