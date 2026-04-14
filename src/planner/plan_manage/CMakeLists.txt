@@ -7,7 +7,16 @@ ADD_COMPILE_OPTIONS(-std=c++14 )
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 
 find_package(Eigen3 REQUIRED)
+
+# Boost configuration for PCL
+set(BOOST_ROOT /usr)
+set(BOOST_LIBRARYDIR /usr/lib/x86_64-linux-gnu)
+set(Boost_NO_SYSTEM_PATHS OFF)
+set(Boost_USE_STATIC_LIBS OFF)
+find_package(Boost 1.65.1 EXACT REQUIRED COMPONENTS system filesystem thread chrono)
 find_package(PCL 1.7 REQUIRED)
+
+find_package(OpenCV 3 REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -47,9 +56,11 @@ catkin_package(
 include_directories(
   include
   SYSTEM
-  ${catkin_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/include
+  ${catkin_INCLUDE_DIRS} 
+  ${PROJECT_SOURCE_DIR}/include
   ${EIGEN3_INCLUDE_DIR}
   ${PCL_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 
@@ -60,6 +71,7 @@ add_executable(ego_planner_node
   )
 target_link_libraries(ego_planner_node 
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
   )
 add_dependencies(ego_planner_node ${${PROJECT_NAME}_EXPORTED_TARGETS})
 

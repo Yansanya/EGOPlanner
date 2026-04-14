@@ -56,7 +56,7 @@
     <arg name="flight_type" value="2"/>
 
     <!-- Preset waypoints (only used when flight_type=2) -->
-    <arg name="point_num" value="3"/>
+    <arg name="point_num" value="5"/>
     <arg name="point0_x" value="10.0"/>
     <arg name="point0_y" value="5.0"/>
     <arg name="point0_z" value="3.0"/>
@@ -108,6 +108,6 @@
   </node>
 
   <!-- RViz visualization -->
-  <include file="$(find ego_planner)/launch/rviz.launch"/>
+  <!-- <include file="$(find ego_planner)/launch/rviz.launch"/> -->
 
 </launch>

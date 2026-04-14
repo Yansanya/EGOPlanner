@@ -14,6 +14,13 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(Eigen3 REQUIRED)
+
+# Boost configuration for PCL
+set(BOOST_ROOT /usr)
+set(BOOST_LIBRARYDIR /usr/lib/x86_64-linux-gnu)
+set(Boost_NO_SYSTEM_PATHS OFF)
+set(Boost_USE_STATIC_LIBS OFF)
+find_package(Boost 1.65.1 EXACT REQUIRED COMPONENTS system filesystem thread chrono)
 find_package(PCL 1.7 REQUIRED)
 
 catkin_package(
