@@ -71,6 +71,7 @@ catkin_install_python(PROGRAMS
   scripts/ego_to_airsim_bridge.py
   scripts/lidar_to_world.py
   scripts/traj_visualizer.py
+  scripts/uav_bridge_server.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

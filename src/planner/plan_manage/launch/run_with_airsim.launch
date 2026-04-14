@@ -16,6 +16,9 @@
   <arg name="map_size_y" value="200.0"/>
   <arg name="map_size_z" value="10.0"/>
 
+  <!-- RViz 很吃内存/GPU；默认关闭，需要 2D Nav Goal 或地图可视化时再加 rviz:=true -->
+  <arg name="rviz" default="false"/>
+
   <!-- AirSim vehicle name (must match settings.json) -->
   <arg name="vehicle_name" default="Drone1"/>
 
@@ -52,7 +55,7 @@
     <!-- Planning horizon should be ~1.5x sensing horizon (depth_filter_maxdist=5.0) -->
     <arg name="planning_horizon" value="7.5"/>
 
-    <!-- flight_type: 1 = use RViz 2D Nav Goal, 2 = follow preset waypoints -->
+    <!-- flight_type: 1 = accept dynamic goals (from RViz / LLM agent), 2 = preset waypoints -->
     <arg name="flight_type" value="2"/>
 
     <!-- Preset waypoints (only used when flight_type=2) -->
@@ -100,14 +103,14 @@
     <param name="target_frame" value="world"/>
   </node>
 
-  <!-- Trajectory visualization: publishes flight path + drone marker for RViz -->
-  <node pkg="ego_planner" name="traj_visualizer" type="traj_visualizer.py" output="screen">
+  <!-- Trajectory visualization (Path/Marker for RViz)；无 RViz 时可关以省一点 CPU -->
+  <node if="$(arg rviz)" pkg="ego_planner" name="traj_visualizer" type="traj_visualizer.py" output="screen">
     <param name="odom_topic" value="$(arg odom_topic)"/>
     <param name="world_frame" value="world"/>
     <param name="min_distance" value="0.05"/>
   </node>
 
-  <!-- RViz visualization -->
-  <include file="$(find ego_planner)/launch/rviz.launch"/>
+  <!-- RViz（可选，默认不启动） -->
+  <include if="$(arg rviz)" file="$(find ego_planner)/launch/rviz.launch"/>
 
 </launch>
