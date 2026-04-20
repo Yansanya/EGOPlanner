@@ -8,7 +8,7 @@
   <!--    2. airsim_ros_pkgs node launched with ENU mode:            -->
   <!--       roslaunch airsim_ros_pkgs airsim_node.launch            -->
   <!--         world_frame_id:=world_enu                             -->
-  <!--    3. ego_to_airsim_bridge.py running for control commands    -->
+  <!--    3. ego_airsim_ros: ego_to_airsim_bridge (run_ego_to_airsim_bridge:=true)   -->
   <!-- ============================================================ -->
 
   <!-- Map size (meters) -->
@@ -96,17 +96,20 @@
         args="0 0 0 0 0 0 world world_enu"/>
 
   <!-- Transform LiDAR from sensor local frame to world frame (using odom, no TF) -->
-  <node pkg="ego_planner" name="lidar_to_world" type="lidar_to_world.py" output="screen">
+  <node pkg="ego_airsim_ros" name="lidar_to_world" type="lidar_to_world.py" output="screen">
     <param name="input_topic" value="/airsim_node/$(arg vehicle_name)/lidar/Lidar1"/>
     <param name="odom_topic" value="$(arg odom_topic)"/>
     <param name="target_frame" value="world"/>
   </node>
 
-  <!-- Trajectory visualization: publishes flight path + drone marker for RViz -->
-  <node pkg="ego_planner" name="traj_visualizer" type="traj_visualizer.py" output="screen">
+  <!-- EGO PositionCommand -> AirSim velocity (requires pip: airsim, numpy) -->
+  <arg name="run_ego_to_airsim_bridge" default="false"/>
+  <arg name="airsim_host" default="localhost"/>
+  <node pkg="ego_airsim_ros" name="ego_to_airsim_bridge" type="ego_to_airsim_bridge.py"
+        output="screen" if="$(arg run_ego_to_airsim_bridge)">
+    <param name="vehicle_name" value="$(arg vehicle_name)"/>
+    <param name="airsim_host" value="$(arg airsim_host)"/>
     <param name="odom_topic" value="$(arg odom_topic)"/>
-    <param name="world_frame" value="world"/>
-    <param name="min_distance" value="0.05"/>
   </node>
 
   <!-- LLM / agent: JSON goal -> /waypoint_generator/waypoints (needs flight_type=1) -->

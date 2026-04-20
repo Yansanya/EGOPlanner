@@ -69,8 +69,8 @@
   <exec_depend>path_searching</exec_depend>
   <exec_depend>bspline_opt</exec_depend>
   <exec_depend>traj_utils</exec_depend>
-  
 
+  <exec_depend>ego_airsim_ros</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

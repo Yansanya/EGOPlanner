@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>ego_airsim_ros</name>
+  <version>0.0.1</version>
+  <description>Python helpers for EGO-Planner with AirSim: control bridge, LiDAR frame fixup.</description>
+  <maintainer email="uavbot@example.com">uavbot</maintainer>
+  <license>BSD</license>
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>quadrotor_msgs</depend>
+  <!-- ego_to_airsim_bridge.py also requires: pip install airsim numpy -->
+</package>
