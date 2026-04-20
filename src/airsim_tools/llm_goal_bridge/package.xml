@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>llm_goal_bridge</name>
+  <version>0.0.1</version>
+  <description>Subscribe LLM-friendly goal messages and publish nav_msgs/Path for EGO-Planner.</description>
+  <maintainer email="uavbot@example.com">uavbot</maintainer>
+  <license>BSD</license>
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>geometry_msgs</depend>
+</package>

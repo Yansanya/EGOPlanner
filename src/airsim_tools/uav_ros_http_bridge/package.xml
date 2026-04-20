@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>uav_ros_http_bridge</name>
+  <version>0.0.1</version>
+  <description>HTTP API (port 8765) for UAVbot: forwards fly_to to llm_goal_bridge / ROS odom for state.</description>
+  <maintainer email="uavbot@example.com">uavbot</maintainer>
+  <license>BSD</license>
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+  <depend>nav_msgs</depend>
+</package>

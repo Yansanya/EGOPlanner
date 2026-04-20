@@ -1,0 +1,16 @@
+<launch>
+  <arg name="output_topic" default="/waypoint_generator/waypoints"/>
+  <arg name="frame_id" default="world"/>
+
+  <node pkg="llm_goal_bridge" type="llm_goal_bridge.py" name="llm_goal_bridge" output="screen">
+    <param name="output_topic" value="$(arg output_topic)"/>
+    <param name="frame_id" value="$(arg frame_id)"/>
+    <!-- Safety clamp (meters); tighten for your map -->
+    <param name="x_min" value="-200.0"/>
+    <param name="x_max" value="200.0"/>
+    <param name="y_min" value="-200.0"/>
+    <param name="y_max" value="200.0"/>
+    <param name="z_min" value="-5.0"/>
+    <param name="z_max" value="50.0"/>
+  </node>
+</launch>
