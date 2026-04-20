@@ -53,7 +53,9 @@
     <arg name="planning_horizon" value="7.5"/>
 
     <!-- flight_type: 1 = use RViz 2D Nav Goal, 2 = follow preset waypoints -->
-    <arg name="flight_type" value="2"/>
+    <!-- !: Flight Type 1: use 2D Nav Goal to select goal  -->
+    <!-- !: Flight Type 2: use global waypoints below  -->
+    <arg name="flight_type" value="1"/>
 
     <!-- Preset waypoints (only used when flight_type=2) -->
     <arg name="point_num" value="5"/>

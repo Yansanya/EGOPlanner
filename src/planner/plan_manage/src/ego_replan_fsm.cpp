@@ -7,18 +7,20 @@ namespace ego_planner
   void EGOReplanFSM::init(ros::NodeHandle &nh)
   {
     current_wp_ = 0;
-    exec_state_ = FSM_EXEC_STATE::INIT;
-    have_target_ = false;
-    have_odom_ = false;
+    exec_state_ = FSM_EXEC_STATE::INIT;  // 运行状态初始化
+    have_target_ = false;                // 是否存在目标点
+    have_odom_ = false;                  // 是否存在里程计数据
 
     /*  fsm param  */
-    nh.param("fsm/flight_type", target_type_, -1);
-    nh.param("fsm/thresh_replan", replan_thresh_, -1.0);
-    nh.param("fsm/thresh_no_replan", no_replan_thresh_, -1.0);
-    nh.param("fsm/planning_horizon", planning_horizen_, -1.0);
-    nh.param("fsm/planning_horizen_time", planning_horizen_time_, -1.0);
-    nh.param("fsm/emergency_time_", emergency_time_, 1.0);
+    // 通过 ROS 参数服务器读取参数
+    nh.param("fsm/flight_type", target_type_, -1);                        // 飞行类型：1=手动选择目标，2=固定航点
+    nh.param("fsm/thresh_replan", replan_thresh_, -1.0);                  // 触发重规划的距离阈值
+    nh.param("fsm/thresh_no_replan", no_replan_thresh_, -1.0);            // 不触发重规划的距离阈值
+    nh.param("fsm/planning_horizon", planning_horizen_, -1.0);            // 规划视野/范围
+    nh.param("fsm/planning_horizen_time", planning_horizen_time_, -1.0);  // 规划时间视野
+    nh.param("fsm/emergency_time_", emergency_time_, 1.0);                // 紧急停止时间
 
+    // 读取航点参数
     nh.param("fsm/waypoint_num", waypoint_num_, -1);
     for (int i = 0; i < waypoint_num_; i++)
     {
@@ -32,26 +34,35 @@ namespace ego_planner
     planner_manager_.reset(new EGOPlannerManager);
     planner_manager_->initPlanModules(nh, visualization_);
 
-    /* callback */
-    exec_timer_ = nh.createTimer(ros::Duration(0.01), &EGOReplanFSM::execFSMCallback, this);
-    safety_timer_ = nh.createTimer(ros::Duration(0.05), &EGOReplanFSM::checkCollisionCallback, this);
+    /* Timer Callbacks */
+    // 设置定时器回调函数
+    exec_timer_ = nh.createTimer(ros::Duration(0.01), &EGOReplanFSM::execFSMCallback, this);           // 0.01s 周期性执行状态机的核心逻辑，处理状态切换和规划请求
+    safety_timer_ = nh.createTimer(ros::Duration(0.05), &EGOReplanFSM::checkCollisionCallback, this);  // 0.05s 周期性检查轨迹是否与障碍物碰撞
 
+    // Subscriber
     odom_sub_ = nh.subscribe("/odom_world", 1, &EGOReplanFSM::odometryCallback, this);
 
+    // Publishers
     bspline_pub_ = nh.advertise<ego_planner::Bspline>("/planning/bspline", 10);
     data_disp_pub_ = nh.advertise<ego_planner::DataDisp>("/planning/data_display", 100);
 
     if (target_type_ == TARGET_TYPE::MANUAL_TARGET)
-      waypoint_sub_ = nh.subscribe("/waypoint_generator/waypoints", 1, &EGOReplanFSM::waypointCallback, this);
+    {
+      // !: 使用手动选择目标，订阅航点生成器的话题
+       waypoint_sub_ = nh.subscribe("/waypoint_generator/waypoints", 1, &EGOReplanFSM::waypointCallback, this);
+    }
     else if (target_type_ == TARGET_TYPE::PRESET_TARGET)
     {
+      // !: 使用预设航点，直接规划全局轨迹
       ros::Duration(1.0).sleep();
       while (ros::ok() && !have_odom_)
         ros::spinOnce();
       planGlobalTrajbyGivenWps();
     }
     else
+    {
       cout << "Wrong target_type_ value! target_type_=" << target_type_ << endl;
+    }
   }
 
   void EGOReplanFSM::planGlobalTrajbyGivenWps()
@@ -106,6 +117,10 @@ namespace ego_planner
     }
   }
 
+  /*
+  * @brief 航点回调函数，处理手动选择的目标点
+  * @param msg 航点消息
+  */
   void EGOReplanFSM::waypointCallback(const nav_msgs::PathConstPtr &msg)
   {
     if (msg->poses[0].pose.position.z < -0.1)
@@ -153,22 +168,29 @@ namespace ego_planner
     }
   }
 
+  /*
+  * @brief 里程计回调函数，接收和处理无人机的里程计数据
+  * @param msg 里程计消息
+  */
   void EGOReplanFSM::odometryCallback(const nav_msgs::OdometryConstPtr &msg)
   {
+    // 位置信息
     odom_pos_(0) = msg->pose.pose.position.x;
     odom_pos_(1) = msg->pose.pose.position.y;
     odom_pos_(2) = msg->pose.pose.position.z;
 
+    // 速度信息
     odom_vel_(0) = msg->twist.twist.linear.x;
     odom_vel_(1) = msg->twist.twist.linear.y;
     odom_vel_(2) = msg->twist.twist.linear.z;
 
-    //odom_acc_ = estimateAcc( msg );
-
+    // 方向四元数信息
     odom_orient_.w() = msg->pose.pose.orientation.w;
     odom_orient_.x() = msg->pose.pose.orientation.x;
     odom_orient_.y() = msg->pose.pose.orientation.y;
     odom_orient_.z() = msg->pose.pose.orientation.z;
+
+    // odom_acc_ = estimateAcc( msg );
 
     have_odom_ = true;
   }
