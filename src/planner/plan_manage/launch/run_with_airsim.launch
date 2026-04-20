@@ -113,6 +113,12 @@
   <arg name="run_llm_goal_bridge" default="false"/>
   <include if="$(arg run_llm_goal_bridge)" file="$(find llm_goal_bridge)/launch/llm_goal_bridge.launch"/>
 
+  <!-- UAVbot nanobot: HTTP :8765 -> goal_json (use with run_llm_goal_bridge:=true) -->
+  <arg name="run_uavbot_http_bridge" default="false"/>
+  <include if="$(arg run_uavbot_http_bridge)" file="$(find uav_ros_http_bridge)/launch/uav_ros_http_bridge.launch">
+    <arg name="odom_topic" value="$(arg odom_topic)"/>
+  </include>
+
   <!-- RViz visualization -->
   <!-- <include file="$(find ego_planner)/launch/rviz.launch"/> -->
 
