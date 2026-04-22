@@ -57,6 +57,11 @@ class EgoAirSimBridge:
         self.takeoff_height = rospy.get_param("~takeoff_height", 3.0)
         self.Kp = rospy.get_param("~Kp", 1.8)
         self.max_vel = rospy.get_param("~max_vel", 3.0)
+        self.max_xy_vel = rospy.get_param("~max_xy_vel", self.max_vel)
+        self.max_z_vel = rospy.get_param("~max_z_vel", 1.5)
+        self.max_yaw_rate_deg = rospy.get_param("~max_yaw_rate_deg", 60.0)
+        self.cmd_timeout_s = rospy.get_param("~cmd_timeout_s", 0.5)
+        self.goal_deadband_m = rospy.get_param("~goal_deadband_m", 0.25)
         odom_topic = rospy.get_param(
             "~odom_topic",
             "/airsim_node/{}/odom_local_enu".format(self.vehicle_name),
@@ -65,6 +70,8 @@ class EgoAirSimBridge:
         self.current_pos = None
         self.receiving_cmd = False
         self.alive = True
+        self.last_cmd_time = rospy.Time(0)
+        self._hover_sent_after_timeout = False
 
         # --- Trajectory plotting ---
         self.traj_points_ned = []
@@ -97,16 +104,18 @@ class EgoAirSimBridge:
 
         # Timer: draw trajectory in AirSim every 1s
         rospy.Timer(rospy.Duration(1.0), self._plot_traj_cb)
+        # Watchdog: if planner command stream stalls, stop pushing stale velocity.
+        rospy.Timer(rospy.Duration(0.1), self._cmd_watchdog_cb)
 
         rospy.loginfo(
             "Bridge ready.\n"
             "  Odom topic : %s\n"
             "  Cmd topic  : /planning/pos_cmd\n"
             "  Vehicle    : %s\n"
-            "  Kp=%.2f  max_vel=%.1f\n"
+            "  Kp=%.2f  max_vel=%.1f  max_xy=%.1f  max_z=%.1f\n"
             "  AirSim trajectory plot: enabled (red line)\n"
             "  Press Ctrl+C to stop (twice to force quit).",
-            odom_topic, self.vehicle_name, self.Kp, self.max_vel,
+            odom_topic, self.vehicle_name, self.Kp, self.max_vel, self.max_xy_vel, self.max_z_vel,
         )
 
     # ------------------------------------------------------------------
@@ -147,6 +156,8 @@ class EgoAirSimBridge:
         if msg.trajectory_flag != PositionCommand.TRAJECTORY_STATUS_READY:
             return
 
+        self.last_cmd_time = rospy.Time.now()
+        self._hover_sent_after_timeout = False
         if not self.receiving_cmd:
             self.receiving_cmd = True
             rospy.loginfo("Receiving trajectory commands from EGO-Planner.")
@@ -157,9 +168,17 @@ class EgoAirSimBridge:
         pos_err = target - self.current_pos
         vel_enu = vel_ff + self.Kp * pos_err
 
-        # Clamp velocity magnitude
+        # Near the target, aggressively reduce command speed to avoid drifting into obstacles.
+        if np.linalg.norm(pos_err) < self.goal_deadband_m and np.linalg.norm(vel_ff) < 0.2:
+            vel_enu = np.zeros(3)
+
+        # Clamp horizontal and vertical components separately for safer behavior.
+        xy_speed = np.linalg.norm(vel_enu[:2])
+        if xy_speed > self.max_xy_vel > 0.0:
+            vel_enu[:2] = vel_enu[:2] / xy_speed * self.max_xy_vel
+        vel_enu[2] = np.clip(vel_enu[2], -self.max_z_vel, self.max_z_vel)
         speed = np.linalg.norm(vel_enu)
-        if speed > self.max_vel:
+        if speed > self.max_vel > 0.0:
             vel_enu = vel_enu / speed * self.max_vel
 
         # ENU -> NED
@@ -167,7 +186,11 @@ class EgoAirSimBridge:
         vy_ned = vel_enu[0]
         vz_ned = -vel_enu[2]
 
-        yaw_rate_deg = -msg.yaw_dot * 180.0 / math.pi
+        yaw_rate_deg = np.clip(
+            -msg.yaw_dot * 180.0 / math.pi,
+            -self.max_yaw_rate_deg,
+            self.max_yaw_rate_deg,
+        )
 
         try:
             self.client.moveByVelocityAsync(
@@ -176,6 +199,27 @@ class EgoAirSimBridge:
                 yaw_mode=airsim.YawMode(is_rate=True, yaw_or_rate=yaw_rate_deg),
                 vehicle_name=self.vehicle_name,
             )
+        except Exception:
+            pass
+
+    def _cmd_watchdog_cb(self, _event):
+        if not self.alive or not self.receiving_cmd:
+            return
+        if self.last_cmd_time.to_sec() <= 0.0:
+            return
+        dt = (rospy.Time.now() - self.last_cmd_time).to_sec()
+        if dt <= self.cmd_timeout_s:
+            return
+        if self._hover_sent_after_timeout:
+            return
+        self._hover_sent_after_timeout = True
+        rospy.logwarn(
+            "No /planning/pos_cmd for %.2fs (>%.2fs); hover for safety.",
+            dt,
+            self.cmd_timeout_s,
+        )
+        try:
+            self.client.hoverAsync(vehicle_name=self.vehicle_name)
         except Exception:
             pass
 

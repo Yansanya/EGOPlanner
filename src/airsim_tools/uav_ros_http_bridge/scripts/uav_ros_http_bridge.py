@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 HTTP bridge for UAVbot (nanobot tools in UAVbot/nanobot/agent/tools/uav.py).
@@ -13,33 +13,33 @@ Run alongside: roslaunch llm_goal_bridge llm_goal_bridge.launch
 Set odom_topic to match EGO (e.g. /odom_world or AirSim odom remap).
 """
 
-from __future__ import annotations
-
 import json
 import math
 import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Any, Optional, Tuple
+try:
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+except ImportError:
+    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 import rospy
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 
 
-def _yaw_from_orientation(q) -> float:
+def _yaw_from_orientation(q):
     siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
     cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
     return math.atan2(siny_cosp, cosy_cosp)
 
 
 class RosHttpBridge:
-    def __init__(self) -> None:
+    def __init__(self):
         rospy.init_node("uav_ros_http_bridge", disable_signals=False)
         self._lock = threading.Lock()
-        self._odom = None  # type: Optional[Odometry]
-        self._goal_xyz = None  # type: Optional[Tuple[float, float, float]]
+        self._odom = None
+        self._goal_xyz = None
         self._goal_active = False
-        self._ego_planner_fsm = None  # type: Optional[dict[str, Any]]
+        self._ego_planner_fsm = None
         self._arrival_radius = float(rospy.get_param("~arrival_radius", 0.75))
         odom_topic = rospy.get_param("~odom_topic", "/odom_world")
         goal_topic = rospy.get_param("~goal_json_topic", "/llm_goal_bridge/goal_json")
@@ -64,11 +64,11 @@ class RosHttpBridge:
             planner_fsm_topic,
         )
 
-    def _on_odom(self, msg: Odometry) -> None:
+    def _on_odom(self, msg):
         with self._lock:
             self._odom = msg
 
-    def _on_planner_fsm(self, msg: String) -> None:
+    def _on_planner_fsm(self, msg):
         raw = (msg.data or "").strip()
         if not raw:
             return
@@ -82,7 +82,7 @@ class RosHttpBridge:
                 5.0, "uav_ros_http_bridge: invalid planner FSM JSON: %s", raw[:200]
             )
 
-    def fly_to(self, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+    def fly_to(self, body):
         try:
             x = float(body["x"])
             y = float(body["y"])
@@ -105,7 +105,7 @@ class RosHttpBridge:
         rospy.loginfo("fly_to published goal_json: %s", payload)
         return 200, {"goal": {"x": x, "y": y, "z": z}}
 
-    def position(self) -> dict[str, Any]:
+    def position(self):
         with self._lock:
             if self._odom is None:
                 return {"has_odom": False, "x": 0.0, "y": 0.0, "z": 0.0, "yaw": 0.0}
@@ -119,7 +119,7 @@ class RosHttpBridge:
                 "yaw": _yaw_from_orientation(q),
             }
 
-    def state(self) -> dict[str, Any]:
+    def state(self):
         with self._lock:
             ego = self._ego_planner_fsm
             if self._odom is None:
@@ -129,11 +129,14 @@ class RosHttpBridge:
                     "goal_active": self._goal_active,
                     "ego_planner": ego,
                 }
+            v = self._odom.twist.twist.linear
+            speed_mps = math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
             if not self._goal_active or self._goal_xyz is None:
                 return {
-                    "status": "IDLE",
+                    "status": "HOVERING" if speed_mps < 0.2 else "MOVING",
                     "arrived": False,
                     "goal_active": False,
+                    "speed_mps": speed_mps,
                     "ego_planner": ego,
                 }
             p = self._odom.pose.pose.position
@@ -144,23 +147,27 @@ class RosHttpBridge:
             dist = math.sqrt(dx * dx + dy * dy + dz * dz)
             arrived = dist < self._arrival_radius
             st = "ARRIVED" if arrived else "FLYING"
+            if arrived:
+                # Mark goal complete so subsequent /state reflects task completion.
+                self._goal_active = False
             return {
                 "status": st,
                 "arrived": arrived,
-                "goal_active": True,
+                "goal_active": self._goal_active,
                 "distance_m": dist,
+                "speed_mps": speed_mps,
                 "ego_planner": ego,
             }
 
 
-def _make_handler(bridge: RosHttpBridge):
+def _make_handler(bridge):
     class H(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
 
-        def log_message(self, fmt: str, *args: Any) -> None:
+        def log_message(self, fmt, *args):
             rospy.logdebug(fmt, *args)
 
-        def _send_json(self, code: int, obj: dict[str, Any]) -> None:
+        def _send_json(self, code, obj):
             data = json.dumps(obj).encode("utf-8")
             self.send_response(code)
             self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -171,7 +178,7 @@ def _make_handler(bridge: RosHttpBridge):
             self.end_headers()
             self.wfile.write(data)
 
-        def do_OPTIONS(self) -> None:
+        def do_OPTIONS(self):
             self.send_response(204)
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -179,7 +186,7 @@ def _make_handler(bridge: RosHttpBridge):
             self.send_header("Content-Length", "0")
             self.end_headers()
 
-        def do_GET(self) -> None:
+        def do_GET(self):
             path = self.path.split("?", 1)[0]
             if path == "/position":
                 self._send_json(200, bridge.position())
@@ -196,7 +203,7 @@ def _make_handler(bridge: RosHttpBridge):
             else:
                 self._send_json(404, {"error": "not_found", "path": path})
 
-        def do_POST(self) -> None:
+        def do_POST(self):
             path = self.path.split("?", 1)[0]
             if path != "/fly_to":
                 self._send_json(404, {"error": "not_found"})
@@ -217,11 +224,12 @@ def _make_handler(bridge: RosHttpBridge):
     return H
 
 
-def main() -> None:
+def main():
     bridge = RosHttpBridge()
     handler = _make_handler(bridge)
     server = HTTPServer((bridge._host, bridge._port), handler)
-    th = threading.Thread(target=server.serve_forever, daemon=True)
+    th = threading.Thread(target=server.serve_forever)
+    th.daemon = True
     th.start()
     rospy.loginfo("HTTP server thread started (daemon).")
     rospy.spin()
