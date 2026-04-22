@@ -62,16 +62,23 @@ class EgoAirSimBridge:
         self.max_yaw_rate_deg = rospy.get_param("~max_yaw_rate_deg", 60.0)
         self.cmd_timeout_s = rospy.get_param("~cmd_timeout_s", 0.5)
         self.goal_deadband_m = rospy.get_param("~goal_deadband_m", 0.25)
+        self.brake_radius_m = rospy.get_param("~brake_radius_m", 1.5)
+        self.Kd_vel = rospy.get_param("~Kd_vel", 0.35)
+        self.control_mode = rospy.get_param("~control_mode", "velocity").strip().lower()
+        self.move_to_pos_speed = rospy.get_param("~move_to_pos_speed", 2.5)
+        self.move_to_pos_interval_s = rospy.get_param("~move_to_pos_interval_s", 0.2)
         odom_topic = rospy.get_param(
             "~odom_topic",
             "/airsim_node/{}/odom_local_enu".format(self.vehicle_name),
         )
 
         self.current_pos = None
+        self.current_vel = np.zeros(3)
         self.receiving_cmd = False
         self.alive = True
         self.last_cmd_time = rospy.Time(0)
         self._hover_sent_after_timeout = False
+        self._last_move_to_pos_cmd_t = rospy.Time(0)
 
         # --- Trajectory plotting ---
         self.traj_points_ned = []
@@ -112,10 +119,11 @@ class EgoAirSimBridge:
             "  Odom topic : %s\n"
             "  Cmd topic  : /planning/pos_cmd\n"
             "  Vehicle    : %s\n"
-            "  Kp=%.2f  max_vel=%.1f  max_xy=%.1f  max_z=%.1f\n"
+            "  mode=%s  Kp=%.2f  Kd=%.2f  max_vel=%.1f  max_xy=%.1f  max_z=%.1f\n"
             "  AirSim trajectory plot: enabled (red line)\n"
             "  Press Ctrl+C to stop (twice to force quit).",
-            odom_topic, self.vehicle_name, self.Kp, self.max_vel, self.max_xy_vel, self.max_z_vel,
+            odom_topic, self.vehicle_name, self.control_mode, self.Kp, self.Kd_vel,
+            self.max_vel, self.max_xy_vel, self.max_z_vel,
         )
 
     # ------------------------------------------------------------------
@@ -127,6 +135,11 @@ class EgoAirSimBridge:
             msg.pose.pose.position.x,
             msg.pose.pose.position.y,
             msg.pose.pose.position.z,
+        ])
+        self.current_vel = np.array([
+            msg.twist.twist.linear.x,
+            msg.twist.twist.linear.y,
+            msg.twist.twist.linear.z,
         ])
 
         # Record for AirSim trajectory plotting (ENU -> NED)
@@ -162,15 +175,63 @@ class EgoAirSimBridge:
             self.receiving_cmd = True
             rospy.loginfo("Receiving trajectory commands from EGO-Planner.")
 
-        # PD control in ENU frame
         target = np.array([msg.position.x, msg.position.y, msg.position.z])
-        vel_ff = np.array([msg.velocity.x, msg.velocity.y, msg.velocity.z])
         pos_err = target - self.current_pos
-        vel_enu = vel_ff + self.Kp * pos_err
 
-        # Near the target, aggressively reduce command speed to avoid drifting into obstacles.
-        if np.linalg.norm(pos_err) < self.goal_deadband_m and np.linalg.norm(vel_ff) < 0.2:
+        if self.control_mode == "position":
+            dist = np.linalg.norm(pos_err)
+            if dist < self.goal_deadband_m:
+                try:
+                    self.client.hoverAsync(vehicle_name=self.vehicle_name)
+                except Exception:
+                    pass
+                return
+
+            now = rospy.Time.now()
+            if self._last_move_to_pos_cmd_t.to_sec() > 0.0:
+                if (now - self._last_move_to_pos_cmd_t).to_sec() < self.move_to_pos_interval_s:
+                    return
+            self._last_move_to_pos_cmd_t = now
+
+            # ENU -> NED target
+            x_ned = target[1]
+            y_ned = target[0]
+            z_ned = -target[2]
+            try:
+                self.client.moveToPositionAsync(
+                    x_ned,
+                    y_ned,
+                    z_ned,
+                    self.move_to_pos_speed,
+                    yaw_mode=airsim.YawMode(
+                        is_rate=True,
+                        yaw_or_rate=np.clip(
+                            -msg.yaw_dot * 180.0 / math.pi,
+                            -self.max_yaw_rate_deg,
+                            self.max_yaw_rate_deg,
+                        ),
+                    ),
+                    vehicle_name=self.vehicle_name,
+                )
+            except Exception:
+                pass
+            return
+
+        # velocity mode: PD control in ENU frame
+        vel_ff = np.array([msg.velocity.x, msg.velocity.y, msg.velocity.z])
+        # Position + velocity damping controller.
+        vel_enu = vel_ff + self.Kp * pos_err - self.Kd_vel * self.current_vel
+
+        dist = np.linalg.norm(pos_err)
+        # Always hard-stop in deadband; do not rely on vel_ff becoming small.
+        if dist < self.goal_deadband_m:
             vel_enu = np.zeros(3)
+        # Smoothly reduce feed-forward near target to avoid carry-over drift
+        # when switching to the next waypoint.
+        elif dist < self.brake_radius_m and self.brake_radius_m > self.goal_deadband_m:
+            scale = (dist - self.goal_deadband_m) / (self.brake_radius_m - self.goal_deadband_m)
+            scale = float(np.clip(scale, 0.0, 1.0))
+            vel_enu = scale * vel_ff + self.Kp * pos_err - self.Kd_vel * self.current_vel
 
         # Clamp horizontal and vertical components separately for safer behavior.
         xy_speed = np.linalg.norm(vel_enu[:2])

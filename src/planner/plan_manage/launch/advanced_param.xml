@@ -33,6 +33,63 @@
   <arg name="point4_x"/>
   <arg name="point4_y"/>
   <arg name="point4_z"/>
+  <arg name="point5_x"/>
+  <arg name="point5_y"/>
+  <arg name="point5_z"/>
+  <arg name="point6_x"/>
+  <arg name="point6_y"/>
+  <arg name="point6_z"/>
+  <arg name="point7_x"/>
+  <arg name="point7_y"/>
+  <arg name="point7_z"/>
+  <arg name="point8_x"/>
+  <arg name="point8_y"/>
+  <arg name="point8_z"/>
+  <arg name="point9_x"/>
+  <arg name="point9_y"/>
+  <arg name="point9_z"/>
+  <arg name="point10_x"/>
+  <arg name="point10_y"/>
+  <arg name="point10_z"/>
+  <arg name="point11_x"/>
+  <arg name="point11_y"/>
+  <arg name="point11_z"/>
+  <arg name="point12_x"/>
+  <arg name="point12_y"/>
+  <arg name="point12_z"/>
+  <arg name="point13_x"/>
+  <arg name="point13_y"/>
+  <arg name="point13_z"/>
+  <arg name="point14_x"/>
+  <arg name="point14_y"/>
+  <arg name="point14_z"/>
+  <arg name="point15_x"/>
+  <arg name="point15_y"/>
+  <arg name="point15_z"/>
+  <arg name="point16_x"/>
+  <arg name="point16_y"/>
+  <arg name="point16_z"/>
+  <arg name="point17_x"/>
+  <arg name="point17_y"/>
+  <arg name="point17_z"/>
+  <arg name="point18_x"/>
+  <arg name="point18_y"/>
+  <arg name="point18_z"/>
+  <arg name="point19_x"/>
+  <arg name="point19_y"/>
+  <arg name="point19_z"/>
+  <arg name="point20_x"/>
+  <arg name="point20_y"/>
+  <arg name="point20_z"/>
+  <arg name="point21_x"/>
+  <arg name="point21_y"/>
+  <arg name="point21_z"/>
+  <arg name="point22_x"/>
+  <arg name="point22_y"/>
+  <arg name="point22_z"/>
+  <arg name="point23_x"/>
+  <arg name="point23_y"/>
+  <arg name="point23_z"/>
 
   <arg name="flight_type"/>
 
@@ -68,6 +125,63 @@
     <param name="fsm/waypoint4_x" value="$(arg point4_x)" type="double"/>
     <param name="fsm/waypoint4_y" value="$(arg point4_y)" type="double"/>
     <param name="fsm/waypoint4_z" value="$(arg point4_z)" type="double"/>
+    <param name="fsm/waypoint5_x" value="$(arg point5_x)" type="double"/>
+    <param name="fsm/waypoint5_y" value="$(arg point5_y)" type="double"/>
+    <param name="fsm/waypoint5_z" value="$(arg point5_z)" type="double"/>
+    <param name="fsm/waypoint6_x" value="$(arg point6_x)" type="double"/>
+    <param name="fsm/waypoint6_y" value="$(arg point6_y)" type="double"/>
+    <param name="fsm/waypoint6_z" value="$(arg point6_z)" type="double"/>
+    <param name="fsm/waypoint7_x" value="$(arg point7_x)" type="double"/>
+    <param name="fsm/waypoint7_y" value="$(arg point7_y)" type="double"/>
+    <param name="fsm/waypoint7_z" value="$(arg point7_z)" type="double"/>
+    <param name="fsm/waypoint8_x" value="$(arg point8_x)" type="double"/>
+    <param name="fsm/waypoint8_y" value="$(arg point8_y)" type="double"/>
+    <param name="fsm/waypoint8_z" value="$(arg point8_z)" type="double"/>
+    <param name="fsm/waypoint9_x" value="$(arg point9_x)" type="double"/>
+    <param name="fsm/waypoint9_y" value="$(arg point9_y)" type="double"/>
+    <param name="fsm/waypoint9_z" value="$(arg point9_z)" type="double"/>
+    <param name="fsm/waypoint10_x" value="$(arg point10_x)" type="double"/>
+    <param name="fsm/waypoint10_y" value="$(arg point10_y)" type="double"/>
+    <param name="fsm/waypoint10_z" value="$(arg point10_z)" type="double"/>
+    <param name="fsm/waypoint11_x" value="$(arg point11_x)" type="double"/>
+    <param name="fsm/waypoint11_y" value="$(arg point11_y)" type="double"/>
+    <param name="fsm/waypoint11_z" value="$(arg point11_z)" type="double"/>
+    <param name="fsm/waypoint12_x" value="$(arg point12_x)" type="double"/>
+    <param name="fsm/waypoint12_y" value="$(arg point12_y)" type="double"/>
+    <param name="fsm/waypoint12_z" value="$(arg point12_z)" type="double"/>
+    <param name="fsm/waypoint13_x" value="$(arg point13_x)" type="double"/>
+    <param name="fsm/waypoint13_y" value="$(arg point13_y)" type="double"/>
+    <param name="fsm/waypoint13_z" value="$(arg point13_z)" type="double"/>
+    <param name="fsm/waypoint14_x" value="$(arg point14_x)" type="double"/>
+    <param name="fsm/waypoint14_y" value="$(arg point14_y)" type="double"/>
+    <param name="fsm/waypoint14_z" value="$(arg point14_z)" type="double"/>
+    <param name="fsm/waypoint15_x" value="$(arg point15_x)" type="double"/>
+    <param name="fsm/waypoint15_y" value="$(arg point15_y)" type="double"/>
+    <param name="fsm/waypoint15_z" value="$(arg point15_z)" type="double"/>
+    <param name="fsm/waypoint16_x" value="$(arg point16_x)" type="double"/>
+    <param name="fsm/waypoint16_y" value="$(arg point16_y)" type="double"/>
+    <param name="fsm/waypoint16_z" value="$(arg point16_z)" type="double"/>
+    <param name="fsm/waypoint17_x" value="$(arg point17_x)" type="double"/>
+    <param name="fsm/waypoint17_y" value="$(arg point17_y)" type="double"/>
+    <param name="fsm/waypoint17_z" value="$(arg point17_z)" type="double"/>
+    <param name="fsm/waypoint18_x" value="$(arg point18_x)" type="double"/>
+    <param name="fsm/waypoint18_y" value="$(arg point18_y)" type="double"/>
+    <param name="fsm/waypoint18_z" value="$(arg point18_z)" type="double"/>
+    <param name="fsm/waypoint19_x" value="$(arg point19_x)" type="double"/>
+    <param name="fsm/waypoint19_y" value="$(arg point19_y)" type="double"/>
+    <param name="fsm/waypoint19_z" value="$(arg point19_z)" type="double"/>
+    <param name="fsm/waypoint20_x" value="$(arg point20_x)" type="double"/>
+    <param name="fsm/waypoint20_y" value="$(arg point20_y)" type="double"/>
+    <param name="fsm/waypoint20_z" value="$(arg point20_z)" type="double"/>
+    <param name="fsm/waypoint21_x" value="$(arg point21_x)" type="double"/>
+    <param name="fsm/waypoint21_y" value="$(arg point21_y)" type="double"/>
+    <param name="fsm/waypoint21_z" value="$(arg point21_z)" type="double"/>
+    <param name="fsm/waypoint22_x" value="$(arg point22_x)" type="double"/>
+    <param name="fsm/waypoint22_y" value="$(arg point22_y)" type="double"/>
+    <param name="fsm/waypoint22_z" value="$(arg point22_z)" type="double"/>
+    <param name="fsm/waypoint23_x" value="$(arg point23_x)" type="double"/>
+    <param name="fsm/waypoint23_y" value="$(arg point23_y)" type="double"/>
+    <param name="fsm/waypoint23_z" value="$(arg point23_z)" type="double"/>
 
     <param name="grid_map/resolution"      value="0.1" /> 
     <param name="grid_map/map_size_x"   value="$(arg map_size_x_)" /> 

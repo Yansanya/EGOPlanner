@@ -13,6 +13,7 @@ Run alongside: roslaunch llm_goal_bridge llm_goal_bridge.launch
 Set odom_topic to match EGO (e.g. /odom_world or AirSim odom remap).
 """
 
+import base64
 import json
 import math
 import threading
@@ -48,6 +49,10 @@ class RosHttpBridge:
         )
         self._host = rospy.get_param("~listen_host", "0.0.0.0")
         self._port = int(rospy.get_param("~listen_port", 8765))
+        self._airsim_host = rospy.get_param("~airsim_host", "localhost")
+        self._airsim_vehicle = rospy.get_param("~airsim_vehicle", "Drone1")
+        self._airsim_camera = rospy.get_param("~airsim_camera", "front_center")
+        self._airsim_client = None
 
         self._pub_goal = rospy.Publisher(goal_topic, String, queue_size=2)
         rospy.Subscriber(odom_topic, Odometry, self._on_odom, queue_size=20)
@@ -56,13 +61,56 @@ class RosHttpBridge:
         )
 
         rospy.loginfo(
-            "uav_ros_http_bridge: HTTP http://%s:%s -> goal %s, odom %s, planner_fsm %s",
+            "uav_ros_http_bridge: HTTP http://%s:%s -> goal %s, odom %s, planner_fsm %s, airsim %s/%s",
             self._host,
             self._port,
             goal_topic,
             odom_topic,
             planner_fsm_topic,
+            self._airsim_host,
+            self._airsim_vehicle,
         )
+
+    def _get_airsim_client(self):
+        if self._airsim_client is not None:
+            return self._airsim_client
+        try:
+            import airsim
+        except Exception as e:
+            return None, "airsim_import_failed: %s" % e
+        try:
+            c = airsim.MultirotorClient(ip=self._airsim_host)
+            c.confirmConnection()
+            self._airsim_client = c
+            return c, None
+        except Exception as e:
+            return None, "airsim_connect_failed: %s" % e
+
+    def capture(self):
+        client, err = self._get_airsim_client()
+        if client is None:
+            return {"ok": False, "error": err or "airsim_unavailable"}
+        try:
+            import airsim
+            # Request compressed bytes so image_data_uint8 can be opened as PNG directly.
+            req = airsim.ImageRequest(self._airsim_camera, airsim.ImageType.Scene, False, True)
+            res = client.simGetImages([req], vehicle_name=self._airsim_vehicle)
+            if not res:
+                return {"ok": False, "error": "airsim_empty_response"}
+            img = res[0]
+            data = img.image_data_uint8
+            if not data:
+                return {"ok": False, "error": "airsim_empty_image"}
+            b64 = base64.b64encode(bytearray(data)).decode("ascii")
+            return {
+                "ok": True,
+                "width": int(getattr(img, "width", 0)),
+                "height": int(getattr(img, "height", 0)),
+                "image_base64": b64,
+                "source": "airsim_http_bridge",
+            }
+        except Exception as e:
+            return {"ok": False, "error": "airsim_capture_failed: %s" % e}
 
     def _on_odom(self, msg):
         with self._lock:
@@ -193,13 +241,7 @@ def _make_handler(bridge):
             elif path == "/state":
                 self._send_json(200, bridge.state())
             elif path == "/capture":
-                self._send_json(
-                    200,
-                    {
-                        "ok": False,
-                        "error": "capture_not_implemented_in_uav_ros_http_bridge",
-                    },
-                )
+                self._send_json(200, bridge.capture())
             else:
                 self._send_json(404, {"error": "not_found", "path": path})
 

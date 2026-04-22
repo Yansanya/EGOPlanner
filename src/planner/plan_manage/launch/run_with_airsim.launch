@@ -55,25 +55,82 @@
     <!-- flight_type: 1 = use RViz 2D Nav Goal, 2 = follow preset waypoints -->
     <!-- !: Flight Type 1: use 2D Nav Goal to select goal  -->
     <!-- !: Flight Type 2: use global waypoints below  -->
-    <arg name="flight_type" value="1"/>
+    <arg name="flight_type" value="2"/>
 
-    <!-- Preset waypoints (only used when flight_type=2) -->
-    <arg name="point_num" value="5"/>
-    <arg name="point0_x" value="10.0"/>
-    <arg name="point0_y" value="5.0"/>
-    <arg name="point0_z" value="3.0"/>
-    <arg name="point1_x" value="20.0"/>
-    <arg name="point1_y" value="-5.0"/>
-    <arg name="point1_z" value="3.0"/>
-    <arg name="point2_x" value="30.0"/>
-    <arg name="point2_y" value="0.0"/>
-    <arg name="point2_z" value="3.0"/>
-    <arg name="point3_x" value="0.0"/>
-    <arg name="point3_y" value="0.0"/>
-    <arg name="point3_z" value="1.5"/>
-    <arg name="point4_x" value="0.0"/>
-    <arg name="point4_y" value="0.0"/>
-    <arg name="point4_z" value="1.5"/>
+    <!-- Preset waypoints from airsim-client-service/block_path.json (position_enu) -->
+    <arg name="point_num" value="18"/>
+    <arg name="point0_x" value="5.296193990034226e-07"/>
+    <arg name="point0_y" value="3.3396894931793213"/>
+    <arg name="point0_z" value="4.320980072021484"/>
+    <arg name="point1_x" value="6.605951057281345e-07"/>
+    <arg name="point1_y" value="6.454298496246338"/>
+    <arg name="point1_z" value="4.380135536193848"/>
+    <arg name="point2_x" value="2.342620372772217"/>
+    <arg name="point2_y" value="10.829092979431152"/>
+    <arg name="point2_z" value="4.492440223693848"/>
+    <arg name="point3_x" value="3.3438243865966797"/>
+    <arg name="point3_y" value="16.09503173828125"/>
+    <arg name="point3_z" value="7.371484756469727"/>
+    <arg name="point4_x" value="7.254614353179932"/>
+    <arg name="point4_y" value="19.42363739013672"/>
+    <arg name="point4_z" value="7.5043253898620605"/>
+    <arg name="point5_x" value="9.136125564575195"/>
+    <arg name="point5_y" value="22.61433982849121"/>
+    <arg name="point5_z" value="7.70505428314209"/>
+    <arg name="point6_x" value="12.983675003051758"/>
+    <arg name="point6_y" value="25.082805633544922"/>
+    <arg name="point6_z" value="8.845931053161621"/>
+    <arg name="point7_x" value="19.352602005004883"/>
+    <arg name="point7_y" value="28.585050582885742"/>
+    <arg name="point7_z" value="11.12863540649414"/>
+    <arg name="point8_x" value="19.365407943725586"/>
+    <arg name="point8_y" value="28.589622497558594"/>
+    <arg name="point8_z" value="19.70204734802246"/>
+    <arg name="point9_x" value="22.038803100585938"/>
+    <arg name="point9_y" value="13.838560104370117"/>
+    <arg name="point9_z" value="22.11528205871582"/>
+    <arg name="point10_x" value="22.116378784179688"/>
+    <arg name="point10_y" value="2.0576515197753906"/>
+    <arg name="point10_z" value="22.130615234375"/>
+    <arg name="point11_x" value="26.038137435913086"/>
+    <arg name="point11_y" value="-9.394896507263184"/>
+    <arg name="point11_z" value="22.30181884765625"/>
+    <arg name="point12_x" value="26.020605087280273"/>
+    <arg name="point12_y" value="-24.12971305847168"/>
+    <arg name="point12_z" value="22.268571853637695"/>
+    <arg name="point13_x" value="26.017120361328125"/>
+    <arg name="point13_y" value="-28.814315795898438"/>
+    <arg name="point13_z" value="19.619213104248047"/>
+    <arg name="point14_x" value="26.01551055908203"/>
+    <arg name="point14_y" value="-29.980920791625977"/>
+    <arg name="point14_z" value="3.4396464824676514"/>
+    <arg name="point15_x" value="16.722227096557617"/>
+    <arg name="point15_y" value="-27.418365478515625"/>
+    <arg name="point15_z" value="3.589146614074707"/>
+    <arg name="point16_x" value="11.649765014648438"/>
+    <arg name="point16_y" value="-14.639264106750488"/>
+    <arg name="point16_z" value="3.719299793243408"/>
+    <arg name="point17_x" value="7.110886573791504"/>
+    <arg name="point17_y" value="-11.900003433227539"/>
+    <arg name="point17_z" value="-0.1711530238389969"/>
+    <arg name="point18_x" value="126.19194030761719"/>
+    <arg name="point18_y" value="-100.21296691894531"/>
+    <arg name="point18_z" value="11.55920124053955"/>
+    <arg name="point19_x" value="126.28950500488281"/>
+    <arg name="point19_y" value="-125.16374969482422"/>
+    <arg name="point19_z" value="11.971712112426758"/>
+    <arg name="point20_x" value="91.0867919921875"/>
+    <arg name="point20_y" value="-131.29611206054688"/>
+    <arg name="point20_z" value="11.328203201293945"/>
+    <arg name="point21_x" value="76.19574737548828"/>
+    <arg name="point21_y" value="-131.2920684814453"/>
+    <arg name="point21_z" value="12.648895263671875"/>
+    <arg name="point22_x" value="59.29138946533203"/>
+    <arg name="point22_y" value="-131.30592346191406"/>
+    <arg name="point22_z" value="14.135765075683594"/>
+    <arg name="point23_x" value="53.371952056884766"/>
+    <arg name="point23_y" value="-131.35797119140625"/>
+    <arg name="point23_z" value="0.1415415108203888"/>
   </include>
 
   <!-- Trajectory server: converts B-spline to PositionCommand at 100Hz -->
@@ -105,11 +162,23 @@
   <!-- EGO PositionCommand -> AirSim velocity (requires pip: airsim, numpy) -->
   <arg name="run_ego_to_airsim_bridge" default="false"/>
   <arg name="airsim_host" default="localhost"/>
+  <arg name="ego_bridge_control_mode" default="position"/>
+  <arg name="ego_bridge_move_to_pos_speed" default="2.5"/>
+  <arg name="ego_bridge_move_to_pos_interval_s" default="0.2"/>
+  <arg name="ego_bridge_goal_deadband_m" default="0.30"/>
+  <arg name="ego_bridge_brake_radius_m" default="1.50"/>
+  <arg name="ego_bridge_kd_vel" default="0.35"/>
   <node pkg="ego_airsim_ros" name="ego_to_airsim_bridge" type="ego_to_airsim_bridge.py"
         output="screen" if="$(arg run_ego_to_airsim_bridge)">
     <param name="vehicle_name" value="$(arg vehicle_name)"/>
     <param name="airsim_host" value="$(arg airsim_host)"/>
     <param name="odom_topic" value="$(arg odom_topic)"/>
+    <param name="control_mode" value="$(arg ego_bridge_control_mode)"/>
+    <param name="move_to_pos_speed" value="$(arg ego_bridge_move_to_pos_speed)"/>
+    <param name="move_to_pos_interval_s" value="$(arg ego_bridge_move_to_pos_interval_s)"/>
+    <param name="goal_deadband_m" value="$(arg ego_bridge_goal_deadband_m)"/>
+    <param name="brake_radius_m" value="$(arg ego_bridge_brake_radius_m)"/>
+    <param name="Kd_vel" value="$(arg ego_bridge_kd_vel)"/>
   </node>
 
   <!-- LLM / agent: JSON goal -> /waypoint_generator/waypoints (needs flight_type=1) -->
