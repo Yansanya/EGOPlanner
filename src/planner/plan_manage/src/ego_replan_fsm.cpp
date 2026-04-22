@@ -1,5 +1,7 @@
 
 #include <plan_manage/ego_replan_fsm.h>
+#include <sstream>
+#include <std_msgs/String.h>
 
 namespace ego_planner
 {
@@ -45,6 +47,7 @@ namespace ego_planner
     // Publishers
     bspline_pub_ = nh.advertise<ego_planner::Bspline>("/planning/bspline", 10);
     data_disp_pub_ = nh.advertise<ego_planner::DataDisp>("/planning/data_display", 100);
+    fsm_status_pub_ = nh.advertise<std_msgs::String>("/ego_planner/fsm_status", 1, true);
 
     if (target_type_ == TARGET_TYPE::MANUAL_TARGET)
     {
@@ -63,6 +66,8 @@ namespace ego_planner
     {
       cout << "Wrong target_type_ value! target_type_=" << target_type_ << endl;
     }
+
+    publishFsmStatus();
   }
 
   void EGOReplanFSM::planGlobalTrajbyGivenWps()
@@ -221,6 +226,22 @@ namespace ego_planner
     cout << "[FSM]: state: " + state_str[int(exec_state_)] << endl;
   }
 
+  void EGOReplanFSM::publishFsmStatus()
+  {
+    static string state_str[7] = {"INIT", "WAIT_TARGET", "GEN_NEW_TRAJ", "REPLAN_TRAJ", "EXEC_TRAJ", "EMERGENCY_STOP"};
+    std::ostringstream oss;
+    oss << "{"
+        << "\"fsm\":\"" << state_str[int(exec_state_)] << "\","
+        << "\"have_odom\":" << (have_odom_ ? "true" : "false") << ","
+        << "\"have_target\":" << (have_target_ ? "true" : "false") << ","
+        << "\"trigger\":" << (trigger_ ? "true" : "false") << ","
+        << "\"wait_for_goal\":" << ((!have_odom_ || !trigger_) ? "true" : "false")
+        << "}";
+    std_msgs::String msg;
+    msg.data = oss.str();
+    fsm_status_pub_.publish(msg);
+  }
+
   void EGOReplanFSM::execFSMCallback(const ros::TimerEvent &e)
   {
 
@@ -233,6 +254,7 @@ namespace ego_planner
         cout << "no odom." << endl;
       if (!trigger_)
         cout << "wait for goal." << endl;
+      publishFsmStatus();
       fsm_num = 0;
     }
 

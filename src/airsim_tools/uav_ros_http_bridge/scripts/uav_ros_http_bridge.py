@@ -6,7 +6,7 @@ HTTP bridge for UAVbot (nanobot tools in UAVbot/nanobot/agent/tools/uav.py).
 Implements the endpoints FlyToTool / GetPositionTool / GetDroneStateTool expect:
   POST /fly_to     JSON {"x","y"} optional "z" -> publishes std_msgs/String JSON on goal_json_topic
   GET  /position   -> last odometry (ENU), yaw from quaternion
-  GET  /state      -> status + arrived (distance to last goal < arrival_radius)
+  GET  /state      -> status + arrived + optional ego_planner (JSON from /ego_planner/fsm_status)
   GET  /capture    -> not implemented here (use AirSim / separate node); returns ok: false
 
 Run alongside: roslaunch llm_goal_bridge llm_goal_bridge.launch
@@ -39,26 +39,48 @@ class RosHttpBridge:
         self._odom = None  # type: Optional[Odometry]
         self._goal_xyz = None  # type: Optional[Tuple[float, float, float]]
         self._goal_active = False
+        self._ego_planner_fsm = None  # type: Optional[dict[str, Any]]
         self._arrival_radius = float(rospy.get_param("~arrival_radius", 0.75))
         odom_topic = rospy.get_param("~odom_topic", "/odom_world")
         goal_topic = rospy.get_param("~goal_json_topic", "/llm_goal_bridge/goal_json")
+        planner_fsm_topic = rospy.get_param(
+            "~planner_fsm_topic", "/ego_planner/fsm_status"
+        )
         self._host = rospy.get_param("~listen_host", "0.0.0.0")
         self._port = int(rospy.get_param("~listen_port", 8765))
 
         self._pub_goal = rospy.Publisher(goal_topic, String, queue_size=2)
         rospy.Subscriber(odom_topic, Odometry, self._on_odom, queue_size=20)
+        rospy.Subscriber(
+            planner_fsm_topic, String, self._on_planner_fsm, queue_size=2
+        )
 
         rospy.loginfo(
-            "uav_ros_http_bridge: HTTP http://%s:%s -> goal %s, odom %s",
+            "uav_ros_http_bridge: HTTP http://%s:%s -> goal %s, odom %s, planner_fsm %s",
             self._host,
             self._port,
             goal_topic,
             odom_topic,
+            planner_fsm_topic,
         )
 
     def _on_odom(self, msg: Odometry) -> None:
         with self._lock:
             self._odom = msg
+
+    def _on_planner_fsm(self, msg: String) -> None:
+        raw = (msg.data or "").strip()
+        if not raw:
+            return
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                with self._lock:
+                    self._ego_planner_fsm = parsed
+        except ValueError:
+            rospy.logwarn_throttle(
+                5.0, "uav_ros_http_bridge: invalid planner FSM JSON: %s", raw[:200]
+            )
 
     def fly_to(self, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         try:
@@ -99,17 +121,20 @@ class RosHttpBridge:
 
     def state(self) -> dict[str, Any]:
         with self._lock:
+            ego = self._ego_planner_fsm
             if self._odom is None:
                 return {
                     "status": "NO_ODOM",
                     "arrived": False,
                     "goal_active": self._goal_active,
+                    "ego_planner": ego,
                 }
             if not self._goal_active or self._goal_xyz is None:
                 return {
                     "status": "IDLE",
                     "arrived": False,
                     "goal_active": False,
+                    "ego_planner": ego,
                 }
             p = self._odom.pose.pose.position
             gx, gy, gz = self._goal_xyz
@@ -124,6 +149,7 @@ class RosHttpBridge:
                 "arrived": arrived,
                 "goal_active": True,
                 "distance_m": dist,
+                "ego_planner": ego,
             }
 
 

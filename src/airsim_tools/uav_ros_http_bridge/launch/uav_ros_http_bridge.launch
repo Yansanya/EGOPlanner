@@ -4,10 +4,12 @@
   <arg name="listen_host" default="0.0.0.0"/>
   <arg name="listen_port" default="8765"/>
   <arg name="arrival_radius" default="0.75"/>
+  <arg name="planner_fsm_topic" default="/ego_planner/fsm_status"/>
 
   <node pkg="uav_ros_http_bridge" type="uav_ros_http_bridge.py" name="uav_ros_http_bridge" output="screen">
     <param name="odom_topic" value="$(arg odom_topic)"/>
     <param name="goal_json_topic" value="$(arg goal_json_topic)"/>
+    <param name="planner_fsm_topic" value="$(arg planner_fsm_topic)"/>
     <param name="listen_host" value="$(arg listen_host)"/>
     <param name="listen_port" value="$(arg listen_port)"/>
     <param name="arrival_radius" value="$(arg arrival_radius)"/>

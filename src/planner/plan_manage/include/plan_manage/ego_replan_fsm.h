@@ -76,7 +76,7 @@ namespace ego_planner
     ros::NodeHandle node_;
     ros::Timer exec_timer_, safety_timer_;
     ros::Subscriber waypoint_sub_, odom_sub_;
-    ros::Publisher replan_pub_, new_pub_, bspline_pub_, data_disp_pub_;
+    ros::Publisher replan_pub_, new_pub_, bspline_pub_, data_disp_pub_, fsm_status_pub_;
 
     /* helper functions */
     bool callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj); // front-end and back-end method
@@ -87,6 +87,7 @@ namespace ego_planner
     void changeFSMExecState(FSM_EXEC_STATE new_state, string pos_call);
     std::pair<int, EGOReplanFSM::FSM_EXEC_STATE> timesOfConsecutiveStateCalls();
     void printFSMExecState();
+    void publishFsmStatus();
 
     void planGlobalTrajbyGivenWps();
     void getLocalTarget();
