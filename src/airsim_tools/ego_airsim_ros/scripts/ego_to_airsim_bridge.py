@@ -23,6 +23,7 @@ import signal
 import sys
 import math
 import threading
+import copy
 import numpy as np
 import rospy
 from nav_msgs.msg import Odometry
@@ -67,6 +68,24 @@ class EgoAirSimBridge:
         self.control_mode = rospy.get_param("~control_mode", "velocity").strip().lower()
         self.move_to_pos_speed = rospy.get_param("~move_to_pos_speed", 2.5)
         self.move_to_pos_interval_s = rospy.get_param("~move_to_pos_interval_s", 0.2)
+        self.ctrl_dt = rospy.get_param("~ctrl_dt", 0.02)
+        self.g = rospy.get_param("~g", 9.81)
+        self.hover_throttle = rospy.get_param("~hover_throttle", 0.60)
+        self.throttle_acc_gain = rospy.get_param("~throttle_acc_gain", 0.05)
+        self.max_tilt_deg = rospy.get_param("~max_tilt_deg", 25.0)
+        self.max_yaw_rate_rad = rospy.get_param(
+            "~max_yaw_rate_rad", math.radians(self.max_yaw_rate_deg)
+        )
+        self.att_kx = np.array([
+            rospy.get_param("~att_kx_x", self.Kp),
+            rospy.get_param("~att_kx_y", self.Kp),
+            rospy.get_param("~att_kx_z", self.Kp),
+        ])
+        self.att_kv = np.array([
+            rospy.get_param("~att_kv_x", self.Kd_vel),
+            rospy.get_param("~att_kv_y", self.Kd_vel),
+            rospy.get_param("~att_kv_z", self.Kd_vel),
+        ])
         odom_topic = rospy.get_param(
             "~odom_topic",
             "/airsim_node/{}/odom_local_enu".format(self.vehicle_name),
@@ -79,6 +98,8 @@ class EgoAirSimBridge:
         self.last_cmd_time = rospy.Time(0)
         self._hover_sent_after_timeout = False
         self._last_move_to_pos_cmd_t = rospy.Time(0)
+        self.latest_cmd = None
+        self.cmd_lock = threading.Lock()
 
         # --- Trajectory plotting ---
         self.traj_points_ned = []
@@ -113,6 +134,8 @@ class EgoAirSimBridge:
         rospy.Timer(rospy.Duration(1.0), self._plot_traj_cb)
         # Watchdog: if planner command stream stalls, stop pushing stale velocity.
         rospy.Timer(rospy.Duration(0.1), self._cmd_watchdog_cb)
+        # Fixed-rate control loop for all modes.
+        rospy.Timer(rospy.Duration(self.ctrl_dt), self._control_cb)
 
         rospy.loginfo(
             "Bridge ready.\n"
@@ -120,10 +143,12 @@ class EgoAirSimBridge:
             "  Cmd topic  : /planning/pos_cmd\n"
             "  Vehicle    : %s\n"
             "  mode=%s  Kp=%.2f  Kd=%.2f  max_vel=%.1f  max_xy=%.1f  max_z=%.1f\n"
+            "  ctrl_dt=%.3f  hover_throttle=%.2f  max_tilt=%.1fdeg\n"
             "  AirSim trajectory plot: enabled (red line)\n"
             "  Press Ctrl+C to stop (twice to force quit).",
             odom_topic, self.vehicle_name, self.control_mode, self.Kp, self.Kd_vel,
             self.max_vel, self.max_xy_vel, self.max_z_vel,
+            self.ctrl_dt, self.hover_throttle, self.max_tilt_deg,
         )
 
     # ------------------------------------------------------------------
@@ -174,50 +199,64 @@ class EgoAirSimBridge:
         if not self.receiving_cmd:
             self.receiving_cmd = True
             rospy.loginfo("Receiving trajectory commands from EGO-Planner.")
+        with self.cmd_lock:
+            self.latest_cmd = copy.deepcopy(msg)
 
+    def _control_cb(self, _event):
+        if not self.alive or self.current_pos is None:
+            return
+        if not self.receiving_cmd:
+            return
+        with self.cmd_lock:
+            cmd = self.latest_cmd
+        if cmd is None:
+            return
+        if self.control_mode == "position":
+            self._run_position_mode(cmd)
+        elif self.control_mode == "attitude":
+            self._run_attitude_mode(cmd)
+        else:
+            self._run_velocity_mode(cmd)
+
+    def _run_position_mode(self, msg):
         target = np.array([msg.position.x, msg.position.y, msg.position.z])
         pos_err = target - self.current_pos
-
-        if self.control_mode == "position":
-            dist = np.linalg.norm(pos_err)
-            if dist < self.goal_deadband_m:
-                try:
-                    self.client.hoverAsync(vehicle_name=self.vehicle_name)
-                except Exception:
-                    pass
-                return
-
-            now = rospy.Time.now()
-            if self._last_move_to_pos_cmd_t.to_sec() > 0.0:
-                if (now - self._last_move_to_pos_cmd_t).to_sec() < self.move_to_pos_interval_s:
-                    return
-            self._last_move_to_pos_cmd_t = now
-
-            # ENU -> NED target
-            x_ned = target[1]
-            y_ned = target[0]
-            z_ned = -target[2]
-            try:
-                self.client.moveToPositionAsync(
-                    x_ned,
-                    y_ned,
-                    z_ned,
-                    self.move_to_pos_speed,
-                    yaw_mode=airsim.YawMode(
-                        is_rate=True,
-                        yaw_or_rate=np.clip(
-                            -msg.yaw_dot * 180.0 / math.pi,
-                            -self.max_yaw_rate_deg,
-                            self.max_yaw_rate_deg,
-                        ),
-                    ),
-                    vehicle_name=self.vehicle_name,
-                )
-            except Exception:
-                pass
+        dist = np.linalg.norm(pos_err)
+        if dist < self.goal_deadband_m:
             return
 
-        # velocity mode: PD control in ENU frame
+        now = rospy.Time.now()
+        if self._last_move_to_pos_cmd_t.to_sec() > 0.0:
+            if (now - self._last_move_to_pos_cmd_t).to_sec() < self.move_to_pos_interval_s:
+                return
+        self._last_move_to_pos_cmd_t = now
+
+        # ENU -> NED target
+        x_ned = target[1]
+        y_ned = target[0]
+        z_ned = -target[2]
+        try:
+            self.client.moveToPositionAsync(
+                x_ned,
+                y_ned,
+                z_ned,
+                self.move_to_pos_speed,
+                yaw_mode=airsim.YawMode(
+                    is_rate=True,
+                    yaw_or_rate=np.clip(
+                        -msg.yaw_dot * 180.0 / math.pi,
+                        -self.max_yaw_rate_deg,
+                        self.max_yaw_rate_deg,
+                    ),
+                ),
+                vehicle_name=self.vehicle_name,
+            )
+        except Exception:
+            pass
+
+    def _run_velocity_mode(self, msg):
+        target = np.array([msg.position.x, msg.position.y, msg.position.z])
+        pos_err = target - self.current_pos
         vel_ff = np.array([msg.velocity.x, msg.velocity.y, msg.velocity.z])
         # Position + velocity damping controller.
         vel_enu = vel_ff + self.Kp * pos_err - self.Kd_vel * self.current_vel
@@ -256,8 +295,53 @@ class EgoAirSimBridge:
         try:
             self.client.moveByVelocityAsync(
                 vx_ned, vy_ned, vz_ned,
-                duration=0.1,
+                duration=self.ctrl_dt,
                 yaw_mode=airsim.YawMode(is_rate=True, yaw_or_rate=yaw_rate_deg),
+                vehicle_name=self.vehicle_name,
+            )
+        except Exception:
+            pass
+
+    def _run_attitude_mode(self, msg):
+        # so3-like outer loop: track position/velocity/acceleration in ENU.
+        target = np.array([msg.position.x, msg.position.y, msg.position.z])
+        vel_ref = np.array([msg.velocity.x, msg.velocity.y, msg.velocity.z])
+        acc_ref = np.array([msg.acceleration.x, msg.acceleration.y, msg.acceleration.z])
+
+        pos_err = target - self.current_pos
+        vel_err = vel_ref - self.current_vel
+        acc_cmd = self.att_kx * pos_err + self.att_kv * vel_err + acc_ref
+
+        # Deadband hold to reduce chatter near final points.
+        if np.linalg.norm(pos_err) < self.goal_deadband_m:
+            acc_cmd[:] = 0.0
+
+        # Desired total acceleration in world ENU frame.
+        a_total = np.array([acc_cmd[0], acc_cmd[1], self.g + acc_cmd[2]])
+        yaw = msg.yaw
+        cy = math.cos(yaw)
+        sy = math.sin(yaw)
+
+        # Map world acceleration to body tilt (FLU convention, small-angle).
+        pitch_cmd = (a_total[0] * cy + a_total[1] * sy) / self.g
+        roll_cmd = (a_total[0] * sy - a_total[1] * cy) / self.g
+
+        max_tilt = math.radians(self.max_tilt_deg)
+        pitch_cmd = float(np.clip(pitch_cmd, -max_tilt, max_tilt))
+        roll_cmd = float(np.clip(roll_cmd, -max_tilt, max_tilt))
+
+        yaw_rate = float(np.clip(msg.yaw_dot, -self.max_yaw_rate_rad, self.max_yaw_rate_rad))
+        throttle = float(
+            np.clip(self.hover_throttle + self.throttle_acc_gain * acc_cmd[2], 0.0, 1.0)
+        )
+
+        try:
+            self.client.moveByRollPitchYawrateThrottleAsync(
+                roll_cmd,
+                pitch_cmd,
+                yaw_rate,
+                throttle,
+                duration=self.ctrl_dt,
                 vehicle_name=self.vehicle_name,
             )
         except Exception:

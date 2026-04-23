@@ -162,12 +162,23 @@
   <!-- EGO PositionCommand -> AirSim velocity (requires pip: airsim, numpy) -->
   <arg name="run_ego_to_airsim_bridge" default="false"/>
   <arg name="airsim_host" default="localhost"/>
-  <arg name="ego_bridge_control_mode" default="position"/>
+  <!-- !: control_mode: position, velocity, attitude -->
+  <arg name="ego_bridge_control_mode" default="position"/> 
   <arg name="ego_bridge_move_to_pos_speed" default="2.5"/>
   <arg name="ego_bridge_move_to_pos_interval_s" default="0.2"/>
   <arg name="ego_bridge_goal_deadband_m" default="0.30"/>
   <arg name="ego_bridge_brake_radius_m" default="1.50"/>
   <arg name="ego_bridge_kd_vel" default="0.35"/>
+  <arg name="ego_bridge_ctrl_dt" default="0.02"/>
+  <arg name="ego_bridge_hover_throttle" default="0.60"/>
+  <arg name="ego_bridge_throttle_acc_gain" default="0.05"/>
+  <arg name="ego_bridge_max_tilt_deg" default="25.0"/>
+  <arg name="ego_bridge_att_kx_x" default="1.8"/>
+  <arg name="ego_bridge_att_kx_y" default="1.8"/>
+  <arg name="ego_bridge_att_kx_z" default="1.8"/>
+  <arg name="ego_bridge_att_kv_x" default="0.35"/>
+  <arg name="ego_bridge_att_kv_y" default="0.35"/>
+  <arg name="ego_bridge_att_kv_z" default="0.35"/>
   <node pkg="ego_airsim_ros" name="ego_to_airsim_bridge" type="ego_to_airsim_bridge.py"
         output="screen" if="$(arg run_ego_to_airsim_bridge)">
     <param name="vehicle_name" value="$(arg vehicle_name)"/>
@@ -179,6 +190,16 @@
     <param name="goal_deadband_m" value="$(arg ego_bridge_goal_deadband_m)"/>
     <param name="brake_radius_m" value="$(arg ego_bridge_brake_radius_m)"/>
     <param name="Kd_vel" value="$(arg ego_bridge_kd_vel)"/>
+    <param name="ctrl_dt" value="$(arg ego_bridge_ctrl_dt)"/>
+    <param name="hover_throttle" value="$(arg ego_bridge_hover_throttle)"/>
+    <param name="throttle_acc_gain" value="$(arg ego_bridge_throttle_acc_gain)"/>
+    <param name="max_tilt_deg" value="$(arg ego_bridge_max_tilt_deg)"/>
+    <param name="att_kx_x" value="$(arg ego_bridge_att_kx_x)"/>
+    <param name="att_kx_y" value="$(arg ego_bridge_att_kx_y)"/>
+    <param name="att_kx_z" value="$(arg ego_bridge_att_kx_z)"/>
+    <param name="att_kv_x" value="$(arg ego_bridge_att_kv_x)"/>
+    <param name="att_kv_y" value="$(arg ego_bridge_att_kv_y)"/>
+    <param name="att_kv_z" value="$(arg ego_bridge_att_kv_z)"/>
   </node>
 
   <!-- LLM / agent: JSON goal -> /waypoint_generator/waypoints (needs flight_type=1) -->
